@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>과초점 · 심도 계산기</title>
+<style>
+:root{
+  --bg:#F4F5F2; --card:#FFFFFF; --ink:#1C2326; --muted:#5D686B; --dim:#8C9699; --rule:#D8DDDA;
+  --chip:#ECEFEC; --blue:#2F7FCF; --blueFill:rgba(55,138,221,.22); --amber:#B06E14;
+  --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#15191B; --card:#1E2427; --ink:#E6EAE9; --muted:#9DA8AB; --dim:#6E797C; --rule:#323B3F;
+    --chip:#273034; --blue:#6BB0F0; --blueFill:rgba(107,176,240,.25); --amber:#E0A04A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15191B; --card:#1E2427; --ink:#E6EAE9; --muted:#9DA8AB; --dim:#6E797C; --rule:#323B3F;
+  --chip:#273034; --blue:#6BB0F0; --blueFill:rgba(107,176,240,.25); --amber:#E0A04A;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 90px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+.wrap{max-width:640px;margin:0 auto;padding:16px 16px 48px}
+h1{font-size:22px;margin:4px 0 2px;letter-spacing:-.01em}
+.sub{margin:0 0 14px;color:var(--muted);font-size:14px}
+
+/* 상단 고정 요약 */
+.sum{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin:0 -16px;padding:10px 16px 8px;border-bottom:1px solid var(--rule)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+.big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.big b{font-family:var(--mono);font-size:30px;font-weight:600;color:var(--amber);line-height:1.1}
+.big span{font-size:13px;color:var(--muted)}
+.range{font-family:var(--mono);font-size:15px;margin-top:2px}
+.range em{font-style:normal;color:var(--muted);font-family:var(--sans);font-size:13px;margin-left:6px}
+svg{display:block;width:100%;height:auto;margin-top:6px}
+.state{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--chip);color:var(--ink);margin-left:6px;vertical-align:2px}
+
+section{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:14px;margin-top:14px}
+section h2{font-size:15px;margin:0 0 10px}
+.lab{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
+.lab:first-of-type{margin-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button,.btn{font:inherit;font-size:14px;color:var(--ink);background:var(--chip);border:1px solid transparent;border-radius:8px;padding:7px 11px;cursor:pointer;min-height:36px}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.btn{background:transparent;border-color:var(--rule)}
+.btn.primary{background:var(--ink);color:var(--card);border-color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.inrow{display:flex;gap:8px;align-items:center;margin-top:8px}
+input[type=number],select{font:inherit;font-family:var(--mono);font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+select{font-family:var(--sans)}
+.unit{color:var(--muted);font-size:14px;white-space:nowrap}
+input[type=range]{width:100%;accent-color:var(--blue);margin:10px 0 4px}
+.hint{font-size:12.5px;color:var(--dim);margin:6px 0 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--rule)}
+th{font-weight:500;color:var(--muted);font-size:12.5px}
+td{font-family:var(--mono)}
+tbody tr{cursor:pointer}
+tbody tr.cur td{color:var(--amber);font-weight:600}
+
+.out{margin-top:12px;padding:10px 12px;background:var(--chip);border-radius:8px;font-size:14.5px}
+.out p{margin:0 0 4px}.out p:last-child{margin:0}
+.out b{font-family:var(--mono)}
+details{margin-top:14px;color:var(--muted);font-size:14px}
+details summary{cursor:pointer;color:var(--ink)}
+details p{margin:8px 0 0}
+code{font-family:var(--mono);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>과초점 · 심도 계산기</h1>
+<p class="sub">인터넷 없이 동작합니다. 마지막 설정은 이 기기에 저장됩니다.</p>
+
+<div class="sum" aria-live="polite">
+  <div class="big"><b id="sH">-</b><span>과초점 거리</span><span class="state" id="sState">-</span></div>
+  <div class="range" id="sRange">-</div>
+  <svg viewBox="0 0 360 64" role="img" aria-label="거리 축 위의 선명한 구간">
+    <rect id="band" x="0" y="10" width="0" height="22" rx="4" fill="var(--blueFill)" stroke="var(--blue)" stroke-width="1"/>
+    <line x1="12" y1="40" x2="322" y2="40" stroke="var(--dim)" stroke-width="1"/>
+    <line x1="322" y1="40" x2="346" y2="40" stroke="var(--dim)" stroke-width="1" stroke-dasharray="3 3"/>
+    <g id="ticks"></g>
+    <line id="hLine" x1="0" y1="4" x2="0" y2="40" stroke="var(--amber)" stroke-width="1.3" stroke-dasharray="4 3"/>
+    <line id="fLine" x1="0" y1="6" x2="0" y2="36" stroke="var(--ink)" stroke-width="2"/>
+  </svg>
+</div>
+
+<section>
+  <h2>렌즈와 센서</h2>
+  <label class="lab" for="sensor">센서</label>
+  <select id="sensor">
+    <option value="apsc">APS-C 후지 (23.5 × 15.6mm, 6240px)</option>
+    <option value="ff">풀프레임 (36 × 24mm, 6000px)</option>
+    <option value="mft">마이크로포서드 (17.3 × 13mm, 5184px)</option>
+  </select>
+
+  <span class="lab">착란원 (c)</span>
+  <div class="chips" id="cocMode">
+    <button data-v="std">일반</button>
+    <button data-v="strict">엄격</button>
+    <button data-v="pixel">픽셀</button>
+    <button data-v="custom">직접</button>
+  </div>
+  <div class="inrow"><input type="number" id="coc" step="0.001" min="0.001" inputmode="decimal"><span class="unit">mm</span></div>
+  <p class="hint" id="cocHint"></p>
+
+  <span class="lab">초점거리</span>
+  <div class="chips" id="flChips">
+    <button data-v="7.5">7.5</button><button data-v="18">18</button><button data-v="23">23</button>
+    <button data-v="35">35</button><button data-v="55">55</button>
+  </div>
+  <div class="inrow"><input type="number" id="fl" step="0.1" min="1" inputmode="decimal"><span class="unit">mm</span></div>
+
+  <span class="lab">조리개</span>
+  <div class="chips" id="apChips">
+    <button data-v="1.4">1.4</button><button data-v="2">2</button><button data-v="2.8">2.8</button>
+    <button data-v="4">4</button><button data-v="5.6">5.6</button><button data-v="8">8</button>
+    <button data-v="11">11</button><button data-v="16">16</button><button data-v="22">22</button>
+  </div>
+  <div class="inrow"><span class="unit">f/</span><input type="number" id="ap" step="0.1" min="0.7" inputmode="decimal"></div>
+</section>
+
+<section>
+  <h2>초점 위치</h2>
+  <input type="range" id="fdSlider" min="0" max="1000" step="1" aria-label="초점 위치">
+  <div class="inrow"><input type="number" id="fd" step="0.01" min="0.05" inputmode="decimal" aria-label="초점 위치 (m)"><span class="unit">m</span></div>
+  <div class="inrow">
+    <button class="btn primary" id="toH">과초점에 맞추기</button>
+    <button class="btn" id="toInf">무한대</button>
+  </div>
+</section>
+
+<section>
+  <h2>이 렌즈의 과초점표</h2>
+  <table>
+    <thead><tr><th>조리개</th><th>초점링 위치</th><th>선명한 범위</th></tr></thead>
+    <tbody id="tbl"></tbody>
+  </table>
+  <p class="hint">줄을 누르면 그 조리개와 과초점 거리가 바로 적용됩니다.</p>
+</section>
+
+<section>
+  <h2>존 포커싱 역산</h2>
+  <p class="hint" style="margin:0 0 4px">선명하게 담고 싶은 구간을 넣으면 초점 위치와 필요한 조리개를 계산합니다.</p>
+  <div class="two">
+    <div><label class="lab" for="zNear">가까운 끝</label><div class="inrow" style="margin:0"><input type="number" id="zNear" step="0.1" min="0.05" inputmode="decimal" value="2"><span class="unit">m</span></div></div>
+    <div><label class="lab" for="zFar">먼 끝 (0 = 무한대)</label><div class="inrow" style="margin:0"><input type="number" id="zFar" step="0.1" min="0" inputmode="decimal" value="5"><span class="unit">m</span></div></div>
+  </div>
+  <div class="out" id="zOut"></div>
+  <div class="inrow"><button class="btn" id="zApply">이 값 적용</button></div>
+</section>
+
+<details>
+  <summary>계산식과 주의할 점</summary>
+  <p>과초점 거리 <code>H = f² ÷ (N × c) + f</code>. 초점을 s에 맞추면 가까운 끝 <code>s(H−f) ÷ (H+s−2f)</code>, 먼 끝 <code>s(H−f) ÷ (H−s)</code>이고 s가 H 이상이면 무한대입니다.</p>
+  <p>착란원 일반은 센서 대각선 ÷ 1500, 엄격은 대각선 ÷ 2800(APS-C에서 약 0.01mm), 픽셀은 픽셀 두 개 크기입니다.</p>
+  <p>이 공식은 일반 렌즈를 전제로 합니다. 어안 렌즈에서는 근사값이니, 처음 한 번은 실제로 찍어 확대해서 확인하세요. 저렴한 수동 렌즈는 거리 눈금이 실제와 다를 수 있습니다.</p>
+</details>
+</div>
+
+<script>
+(function(){
+  var SENS={apsc:{w:23.5,h:15.6,px:6240},ff:{w:36,h:24,px:6000},mft:{w:17.3,h:13,px:5184}};
+  var STOPS=[1.4,2,2.8,4,5.6,8,11,16,22];
+  var S={sensor:'apsc',cocMode:'custom',coc:0.01,f:7.5,N:5.6,s:1.01};
+  try{var saved=JSON.parse(localStorage.getItem('dofcalc')||'null');if(saved)for(var k in saved)S[k]=saved[k];}catch(e){}
+  if(S.s===null)S.s=Infinity;
+
+  var $=function(id){return document.getElementById(id)};
+  var X0=12,X1=322,XI=340,DMIN=0.1,DMAX=50;
+
+  function diag(){var t=SENS[S.sensor];return Math.sqrt(t.w*t.w+t.h*t.h);}
+  function cocFor(mode){
+    var t=SENS[S.sensor];
+    if(mode==='std')return diag()/1500;
+    if(mode==='strict')return diag()/2800;
+    if(mode==='pixel')return 2*t.w/t.px;
+    return S.coc;
+  }
+  function H(N){return S.f*S.f/((N||S.N)*S.coc)+S.f;}
+  function limits(sm,N){
+    var h=H(N),f=S.f,s=sm*1000;
+    if(!isFinite(s))return{h:h,near:h-f,far:Infinity};
+    var near=s*(h-f)/(h+s-2*f);
+    var far=s<h?s*(h-f)/(h-s):Infinity;
+    return{h:h,near:near,far:far};
+  }
+  function fm(mm){
+    if(!isFinite(mm))return '∞';
+    var m=mm/1000;
+    if(m<1)return m.toFixed(2)+'m';
+    if(m<10)return m.toFixed(2)+'m';
+    return m.toFixed(1)+'m';
+  }
+  function X(m){if(!isFinite(m)||m>DMAX)return XI;var l=Math.log10(Math.max(m,DMIN));return X0+(l-Math.log10(DMIN))/(Math.log10(DMAX)-Math.log10(DMIN))*(X1-X0);}
+  function sliderToM(v){return DMIN*Math.pow(DMAX/DMIN,v/1000);}
+  function mToSlider(m){if(!isFinite(m))return 1000;return Math.round(Math.log(m/DMIN)/Math.log(DMAX/DMIN)*1000);}
+
+  var tk=$('ticks');
+  [0.2,0.5,1,2,5,10,20].forEach(function(d){var x=X(d);
+    tk.insertAdjacentHTML('beforeend','<line x1="'+x+'" y1="37" x2="'+x+'" y2="43" stroke="var(--dim)"/><text x="'+x+'" y="57" text-anchor="middle" font-size="10" fill="var(--muted)">'+d+'</text>');});
+  tk.insertAdjacentHTML('beforeend','<text x="'+XI+'" y="57" text-anchor="middle" font-size="11" fill="var(--muted)">∞</text>');
+
+  function press(groupId,val){
+    document.querySelectorAll('#'+groupId+' button').forEach(function(b){
+      b.setAttribute('aria-pressed',String(Math.abs(parseFloat(b.dataset.v)-val)<1e-9||b.dataset.v===val));});
+  }
+  function save(){try{var o={};for(var k in S)o[k]=S[k];if(!isFinite(o.s))o.s=null;localStorage.setItem('dofcalc',JSON.stringify(o));}catch(e){}}
+
+  function render(){
+    if(S.cocMode!=='custom')S.coc=cocFor(S.cocMode);
+    var L=limits(S.s);
+    $('sH').textContent=fm(L.h);
+    $('sRange').innerHTML=fm(L.near)+' ~ '+fm(L.far)+'<em>초점 '+fm(S.s*1000)+' · f/'+S.N+' · '+S.f+'mm · c '+S.coc.toFixed(4).replace(/0+$/,'')+'</em>';
+    var r=(S.s*1000)/L.h, st;
+    if(!isFinite(S.s))st='무한대 초점';else if(r>0.95&&r<1.06)st='팬 포커스';else if(!isFinite(L.far))st='앞쪽 손해';else st='존 포커싱';
+    $('sState').textContent=st;
+    var xn=X(L.near/1000),xf=X(L.far/1000);
+    $('band').setAttribute('x',xn);$('band').setAttribute('width',Math.max(2,xf-xn));
+    var xs=X(S.s),xh=X(L.h/1000);
+    $('fLine').setAttribute('x1',xs);$('fLine').setAttribute('x2',xs);
+    $('hLine').setAttribute('x1',xh);$('hLine').setAttribute('x2',xh);
+
+    $('sensor').value=S.sensor;
+    press('cocMode',S.cocMode);
+    if(document.activeElement!==$('coc'))$('coc').value=+S.coc.toFixed(4);
+    $('cocHint').textContent='일반 '+cocFor('std').toFixed(4)+' · 엄격 '+cocFor('strict').toFixed(4)+' · 픽셀 '+cocFor('pixel').toFixed(4)+' mm';
+    press('flChips',S.f);press('apChips',S.N);
+    if(document.activeElement!==$('fl'))$('fl').value=S.f;
+    if(document.activeElement!==$('ap'))$('ap').value=S.N;
+    $('fdSlider').value=mToSlider(S.s);
+    if(document.activeElement!==$('fd'))$('fd').value=isFinite(S.s)?(+S.s.toFixed(2)):'';
+    $('fd').placeholder='∞';
+
+    var rows='';
+    STOPS.forEach(function(n){var h=H(n);
+      rows+='<tr data-n="'+n+'"'+(n===S.N?' class="cur"':'')+'><td>f/'+n+'</td><td>'+fm(h)+'</td><td>'+fm(h/2)+' ~ ∞</td></tr>';});
+    $('tbl').innerHTML=rows;
+
+    zone();
+    save();
+  }
+
+  var zRes=null;
+  function zone(){
+    var n=parseFloat($('zNear').value),fv=parseFloat($('zFar').value);
+    var out=$('zOut');
+    if(!(n>0)){out.innerHTML='<p>가까운 끝을 입력하세요.</p>';zRes=null;return;}
+    var Dn=n*1000,Df=(fv>0)?fv*1000:Infinity;
+    if(isFinite(Df)&&Df<=Dn){out.innerHTML='<p>먼 끝이 가까운 끝보다 커야 합니다.</p>';zRes=null;return;}
+    var s,Hp;
+    if(!isFinite(Df)){s=2*Dn;Hp=2*Dn;}else{s=2*Dn*Df/(Dn+Df);Hp=2*Dn*Df/(Df-Dn);}
+    var Nreq=S.f*S.f/(S.coc*Hp);
+    var stop=null;for(var i=0;i<STOPS.length;i++){if(STOPS[i]>=Nreq-1e-6){stop=STOPS[i];break;}}
+    var html='<p>초점 위치 <b>'+fm(s)+'</b></p><p>필요한 조리개 <b>f/'+Nreq.toFixed(1)+'</b> 이상</p>';
+    if(stop){html+='<p>눈금으로는 <b>f/'+stop+'</b>까지 조이세요</p>';zRes={s:s/1000,N:stop};}
+    else{html+='<p>f/22로도 부족합니다. 구간을 좁히거나 더 짧은 초점거리를 쓰세요.</p>';zRes=null;}
+    out.innerHTML=html;
+  }
+
+  $('sensor').addEventListener('change',function(e){S.sensor=e.target.value;render();});
+  document.querySelectorAll('#cocMode button').forEach(function(b){b.addEventListener('click',function(){S.cocMode=b.dataset.v;if(S.cocMode==='custom'&&!(S.coc>0))S.coc=0.01;render();});});
+  $('coc').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(v>0){S.coc=v;S.cocMode='custom';render();}});
+  document.querySelectorAll('#flChips button').forEach(function(b){b.addEventListener('click',function(){S.f=parseFloat(b.dataset.v);render();});});
+  $('fl').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(v>0){S.f=v;render();}});
+  document.querySelectorAll('#apChips button').forEach(function(b){b.addEventListener('click',function(){S.N=parseFloat(b.dataset.v);render();});});
+  $('ap').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(v>0){S.N=v;render();}});
+  $('fdSlider').addEventListener('input',function(e){var v=+e.target.value;S.s=v>=1000?Infinity:+sliderToM(v).toFixed(3);render();});
+  $('fd').addEventListener('input',function(e){var v=parseFloat(e.target.value);if(v>0){S.s=v;render();}});
+  $('toH').addEventListener('click',function(){S.s=+(H()/1000).toFixed(3);render();});
+  $('toInf').addEventListener('click',function(){S.s=Infinity;render();});
+  $('tbl').addEventListener('click',function(e){var tr=e.target.closest('tr');if(!tr)return;S.N=parseFloat(tr.dataset.n);S.s=+(H()/1000).toFixed(3);render();window.scrollTo({top:0,behavior:'smooth'});});
+  ['zNear','zFar'].forEach(function(id){$(id).addEventListener('input',zone);});
+  $('zApply').addEventListener('click',function(){if(!zRes)return;S.s=+zRes.s.toFixed(3);S.N=zRes.N;render();window.scrollTo({top:0,behavior:'smooth'});});
+
+  render();
+})();
+</script>
+</body>
+</html>
